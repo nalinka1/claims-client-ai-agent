@@ -12,9 +12,14 @@ class BedrockModelClient:
             region_name=region_name,
         )
 
-    def generate(self, prompt: str) -> str:
+    def generate(self, system_prompt: str, prompt: str) -> str:
         response = self.client.converse(
             modelId=self.model_id,
+            system=[
+                {
+                "text": system_prompt
+                }
+                ],
             messages=[
                 {
                     "role": "user",

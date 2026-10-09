@@ -11,7 +11,10 @@ def main():
 
     agent = ClaimsAgent(model_client)
 
-    response = agent.respond("What is a claim?")
+    #response = agent.respond("What is a claim?")
+    response = agent.respond(
+    "My claim number is CLM-12345. "
+    "Can you check whether my claim has been approved?")
 
     print(response)
 
