@@ -11,12 +11,18 @@ def main():
 
     agent = ClaimsAgent(model_client)
 
-    #response = agent.respond("What is a claim?")
-    response = agent.respond(
-    "My claim number is CLM-12345. "
-    "Can you check whether my claim has been approved?")
+    print("Demo Claims Services Assistant")
+    print("Type 'exit' to end the conversation.\n")
 
-    print(response)
+    while True:
+        user_message = input("You: ")
+
+        if user_message.lower().strip() == "exit":
+            break
+
+        response = agent.respond(user_message)
+
+        print(f"\nAssistant: {response}\n")
 
 
 

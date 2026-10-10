@@ -12,24 +12,28 @@ class BedrockModelClient:
             region_name=region_name,
         )
 
-    def generate(self, system_prompt: str, prompt: str) -> str:
+    def generate(
+        self,
+        system_prompt: str,
+        messages: list[dict]
+    ) -> str:
+
+        bedrock_messages = [
+            {
+                "role": message["role"],
+                "content": [
+                    {"text": message["content"]}
+                ]
+            }
+            for message in messages
+        ]
+
         response = self.client.converse(
             modelId=self.model_id,
             system=[
-                {
-                "text": system_prompt
-                }
-                ],
-            messages=[
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "text": prompt
-                        }
-                    ],
-                }
+                {"text": system_prompt}
             ],
+            messages=bedrock_messages
         )
 
         return response["output"]["message"]["content"][0]["text"]
