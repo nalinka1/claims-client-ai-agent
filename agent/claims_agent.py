@@ -1,6 +1,7 @@
 from agent.model_client import ModelClient
 from knowledge.knowledge_retriever import KnowledgeRetriever
 from tools.knowledge_search_tool import SEARCH_KNOWLEDGE_BASE_TOOL
+
 CLAIMS_AGENT_INSTRUCTIONS = """
 You are a Client Claims Assistant for Demo Claims Services.
 
