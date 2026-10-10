@@ -1,39 +1,40 @@
-import boto3
+from typing import Any
 
-from agent.model_client import ModelClient
+def generate(
+    self,
+    system_prompt: str,
+    messages: list[dict],
+    tools: list[dict] | None = None
+) -> dict[str, Any]:
 
+    bedrock_messages = []
 
-class BedrockModelClient:
+    for message in messages:
+        content = message["content"]
 
-    def __init__(self, model_id: str, region_name: str):
-        self.model_id = model_id
-        self.client = boto3.client(
-            "bedrock-runtime",
-            region_name=region_name,
-        )
+        # Convert simple text messages into Bedrock format.
+        if isinstance(content, str):
+            content = [{"text": content}]
 
-    def generate(
-        self,
-        system_prompt: str,
-        messages: list[dict]
-    ) -> str:
+        bedrock_messages.append({
+            "role": message["role"],
+            "content": content
+        })
 
-        bedrock_messages = [
-            {
-                "role": message["role"],
-                "content": [
-                    {"text": message["content"]}
-                ]
-            }
-            for message in messages
-        ]
+    request = {
+        "modelId": self.model_id,
+        "system": [
+            {"text": system_prompt}
+        ],
+        "messages": bedrock_messages
+    }
 
-        response = self.client.converse(
-            modelId=self.model_id,
-            system=[
-                {"text": system_prompt}
-            ],
-            messages=bedrock_messages
-        )
+    # Include tool definitions only when provided.
+    if tools:
+        request["toolConfig"] = {
+            "tools": tools
+        }
 
-        return response["output"]["message"]["content"][0]["text"]
+    response = self.client.converse(**request)
+
+    return response

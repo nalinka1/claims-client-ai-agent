@@ -1,5 +1,6 @@
 from agent.model_client import ModelClient
 from knowledge.knowledge_retriever import KnowledgeRetriever
+from tools.knowledge_search_tool import SEARCH_KNOWLEDGE_BASE_TOOL
 CLAIMS_AGENT_INSTRUCTIONS = """
 You are a Client Claims Assistant for Demo Claims Services.
 
@@ -123,16 +124,36 @@ class ClaimsAgent:
             "content": user_message
         })
 
-        # 5. Send history and temporary instructions to Bedrock
+       # 5. Send request to Bedrock with available tools
         response = self.model_client.generate(
             system_prompt=system_prompt,
-            messages=self.history
+            messages=self.history,
+            tools=[SEARCH_KNOWLEDGE_BASE_TOOL]
         )
 
-        # 6. Store the assistant response
-        self.history.append({
-            "role": "assistant",
-            "content": response
-        })
+        # 6. Inspect the model's decision
+        stop_reason = response["stopReason"]
 
-        return response
+        if stop_reason == "tool_use":
+            print("[DEBUG] Model requested a tool")
+            return "Tool execution is not implemented yet."
+
+        if stop_reason == "end_turn":
+            assistant_message = response["output"]["message"]
+
+            answer = "".join(
+                block["text"]
+                for block in assistant_message["content"]
+                if "text" in block
+            )
+
+            self.history.append({
+                "role": "assistant",
+                "content": answer
+            })
+
+            return answer
+
+        raise RuntimeError(
+            f"Unexpected Bedrock stop reason: {stop_reason}"
+        )
