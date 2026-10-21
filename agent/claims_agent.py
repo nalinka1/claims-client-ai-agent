@@ -72,11 +72,23 @@ class ClaimsAgent:
         self.model_client = model_client
         self.knowledge_retriever = knowledge_retriever
         self.history = []
+    def execute_tool(self, tool_name: str, tool_input: dict) -> dict:
 
+        if tool_name == "search_knowledge_base":
+            query = tool_input["query"]
+
+            results = self.knowledge_retriever.search(query)
+
+            return {
+                "results": results
+            }
+
+        raise ValueError(f"Unknown tool: {tool_name}")
     def respond(self, user_message: str) -> str:
 
         # 1. Find relevant knowledge
-        results = self.knowledge_retriever.search(user_message)
+        # results = self.knowledge_retriever.search(user_message)
+        results = []
         print("\n[DEBUG] User question:", user_message)
 
         print("[DEBUG] Retrieved sections:")
@@ -136,8 +148,69 @@ class ClaimsAgent:
         stop_reason = response["stopReason"]
 
         if stop_reason == "tool_use":
-            print("[DEBUG] Model requested a tool")
-            return "Tool execution is not implemented yet."
+            assistant_message = response["output"]["message"]
+
+            # Preserve the model's original tool request
+            self.history.append(assistant_message)
+
+            tool_results = []
+
+            for block in assistant_message["content"]:
+                if "toolUse" not in block:
+                    continue
+
+                tool_request = block["toolUse"]
+
+                tool_name = tool_request["name"]
+                tool_input = tool_request["input"]
+                tool_use_id = tool_request["toolUseId"]
+
+                print(f"[DEBUG] Executing tool: {tool_name}")
+
+                result = self.execute_tool(tool_name, tool_input)
+
+                tool_results.append({
+                    "toolResult": {
+                        "toolUseId": tool_use_id,
+                        "content": [
+                            {"json": result}
+                        ]
+                    }
+                })
+
+            # Send results back as a user-role tool message
+            self.history.append({
+                "role": "user",
+                "content": tool_results
+            })
+
+            # Ask Bedrock to continue after receiving tool results
+            final_response = self.model_client.generate(
+                system_prompt=system_prompt,
+                messages=self.history,
+                tools=[SEARCH_KNOWLEDGE_BASE_TOOL]
+            )
+
+            if final_response["stopReason"] != "end_turn":
+                raise RuntimeError(
+                    "Expected final answer after tool execution, "
+                    f"received: {final_response['stopReason']}"
+                )
+
+            final_message = final_response["output"]["message"]
+
+            answer = "".join(
+                block["text"]
+                for block in final_message["content"]
+                if "text" in block
+            )
+
+            self.history.append({
+                "role": "assistant",
+                "content": answer
+            })
+
+            return answer
 
         if stop_reason == "end_turn":
             assistant_message = response["output"]["message"]
